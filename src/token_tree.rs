@@ -41,16 +41,16 @@ impl Parser {
     fn new(tokens: Vec<Token>) -> Self {
         Parser { tokens, index: 0 }
     }
-    pub fn consume(&mut self) -> &Token {
+    fn consume(&mut self) -> &Token {
         self.index += 1;
         &self.tokens[self.index - 1]
     }
-    pub fn has_next(&self) -> bool {
+    fn has_next(&self) -> bool {
         self.tokens.len() > self.index
     }
 }
 
-pub struct TokenTree {
+struct TokenTree {
     tokens: Vec<Node>,
     base: usize,
     last: usize,
@@ -58,12 +58,6 @@ pub struct TokenTree {
 impl TokenTree {
     fn new() -> Self {
         TokenTree { tokens: Vec::new(), base: 0, last: 0 }
-    }
-    fn get_node(&self, index: usize) -> &Node {
-        &self.tokens[index]
-    }
-    fn get_base(&self) -> &Node {
-        &self.tokens[self.base]
     }
     fn add_last(&mut self, o: Operator, n: f64) {
         let node = Node::Operator(o, self.tokens.len(), self.tokens.len() + 1);
@@ -98,14 +92,14 @@ impl TokenTree {
         }
     }
     fn evaluate_tree(&self) -> f64 {
-        self.evaluate_node(self.get_base())
+        self.evaluate_node(&self.tokens[self.base])
     }
     fn evaluate_node(&self, node: &Node) -> f64 {
         match node {
             Node::Number(n) => *n,
             Node::Operator(o, l, r) => {
-                let left = self.evaluate_node(self.get_node(*l));
-                let right = self.evaluate_node(self.get_node(*r));
+                let left = self.evaluate_node(&self.tokens[*l]);
+                let right = self.evaluate_node(&self.tokens[*r]);
                 match o {
                     Operator::Plus => left + right,
                     Operator::Minus => left - right,

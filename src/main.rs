@@ -9,7 +9,7 @@ mod validation;
 mod token_tree;
 
 const DEBUG: bool = true;
-// .5(1+2)(3+4) * 5 + 3 * 2(1*2_0)
+// -.5(1+2)(-3+4) * 5 + 3 * 2(1*2_0)
 
 fn main() {
     loop {

@@ -4,9 +4,7 @@ pub fn parse_exp(exp: &str) -> Result< Vec<Token>, String > {
     let mut parser = Parser::new(exp.to_string().into_bytes());
 
     while parser.has_next() {
-        let c = parser.peek(0);
-
-        match c {
+        match parser.consume() {
             b' ' | b'_' => {},
 
             b'(' => res.push(Token::Bracket(true)),
@@ -19,37 +17,35 @@ pub fn parse_exp(exp: &str) -> Result< Vec<Token>, String > {
 
             _ => res.push(Token::Number(parse_number(&mut parser)?)),
         }
-        parser.consume(1);
     }
-
     return Ok(res);
 }
 fn parse_number(p: &mut Parser) -> Result<f64, String> {
 
     let mut chars = Vec::new();
+    p.back();
 
     while p.has_next() {
-        let c = p.peek(0);
+        let c = p.consume();
 
         if c == b' ' || c == b'_' {
-            p.consume(1);
             continue;
         }
 
         if (c as char).is_ascii_digit() || c == b'.' {
             chars.push(c);
-            p.consume(1);
         }
         else {
+            p.back();
             break;
         }
     }
 
-    if chars.len() == 0 {
-        return  Err((p.peek(0) as char).to_string());
-    }
+    
 
-    p.back();
+    if chars.len() == 0 {
+        return  Err((p.consume() as char).to_string());
+    }
 
     let s = String::from_utf8(chars).unwrap();
 
@@ -66,11 +62,9 @@ impl Parser {
     pub fn new(buffer: Vec<u8>) -> Self {
         Parser { buffer, index: 0 }
     }
-    pub fn consume(&mut self, count: usize) {
-        self.index += count;
-    }
-    pub fn peek(&self, offset: usize) -> u8 {
-        self.buffer[self.index + offset]
+    pub fn consume(&mut self) -> u8 {
+        self.index += 1;
+        self.buffer[self.index -1]
     }
     pub fn has_next(&self) -> bool {
         self.buffer.len() > self.index
