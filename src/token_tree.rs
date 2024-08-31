@@ -1,4 +1,4 @@
-use std::mem::replace;
+use std::{collections::LinkedList, mem::replace};
 
 use crate::{token_parse::{operator_to_string, Operator, Token}, DEBUG};
 
@@ -34,12 +34,12 @@ fn create_eval_tree_recursive(parser: &mut Parser) -> f64 {
 }
 
 struct Parser {
-    tokens: Vec<Token>,
+    tokens: Box<[Token]>,
     index: usize,
 }
 impl Parser {
     fn new(tokens: Vec<Token>) -> Self {
-        Parser { tokens, index: 0 }
+        Parser { tokens: tokens.into(), index: 0 }
     }
     fn consume(&mut self) -> &Token {
         self.index += 1;
@@ -92,14 +92,20 @@ impl TokenTree {
         }
     }
     fn evaluate_tree(&self) -> f64 {
-        self.evaluate_node(&self.tokens[self.base])
+
+        if self.tokens.len() < 10_000 {
+            self.evaluate_node_stack(&self.tokens[self.base])
+         }   
+        else {
+            self.evaluate_node_heap()
+        }
     }
-    fn evaluate_node(&self, node: &Node) -> f64 {
+    fn evaluate_node_stack(&self, node: &Node) -> f64 {
         match node {
             Node::Number(n) => *n,
             Node::Operator(o, l, r) => {
-                let left = self.evaluate_node(&self.tokens[*l]);
-                let right = self.evaluate_node(&self.tokens[*r]);
+                let left = self.evaluate_node_stack(&self.tokens[*l]);
+                let right = self.evaluate_node_stack(&self.tokens[*r]);
                 match o {
                     Operator::Plus => left + right,
                     Operator::Minus => left - right,
@@ -108,6 +114,38 @@ impl TokenTree {
                 }
             },
         }
+    }
+    fn evaluate_node_heap(&self) -> f64 {
+        let mut nodes = Vec::new();
+        let mut numbers = LinkedList::new();
+        let mut operators = LinkedList::new();
+
+        nodes.push(self.base);
+
+        while nodes.len() > 0 {
+            let index = nodes.pop().unwrap();
+
+            match self.tokens[index] {
+                Node::Number(n) => numbers.push_back(n),
+                Node::Operator(o, l, r) => {
+                    operators.push_back(o);
+                    nodes.push(l);
+                    nodes.push(r);
+                },
+            }
+        }
+
+        let mut n = numbers.pop_back().unwrap();
+
+        while numbers.len() > 0 {
+            match operators.pop_front().unwrap() {
+                Operator::Plus => n += numbers.pop_front().unwrap(),
+                Operator::Minus => n -= numbers.pop_front().unwrap(),
+                Operator::Mul => n *= numbers.pop_front().unwrap(),
+                Operator::Div => n /= numbers.pop_front().unwrap(),
+            }
+        }
+        return n;
     }
     pub fn print(&self) {
         println!("TREE - base: {}, last:  {}", self.base, self.last);
@@ -120,6 +158,7 @@ impl TokenTree {
         }
     }
 }
+#[derive(Clone)]
 enum Node {
     Number(f64),
     Operator(Operator, usize, usize),
