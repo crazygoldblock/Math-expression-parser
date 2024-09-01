@@ -1,4 +1,4 @@
-use std::{collections::LinkedList, mem::replace};
+use std::mem::replace;
 
 use crate::{token_parse::{operator_to_string, Operator, Token}, DEBUG};
 
@@ -91,11 +91,11 @@ impl TokenTree {
             Operator::Mul | Operator::Div => self.add_last(o, n),
         }
     }
-    fn evaluate_tree(&self) -> f64 {
+    fn evaluate_tree(&mut self) -> f64 {
 
         if self.tokens.len() < 10_000 {
             self.evaluate_node_stack(&self.tokens[self.base])
-         }   
+        }   
         else {
             self.evaluate_node_heap()
         }
@@ -115,37 +115,37 @@ impl TokenTree {
             },
         }
     }
-    fn evaluate_node_heap(&self) -> f64 {
-        let mut nodes = Vec::new();
-        let mut numbers = LinkedList::new();
-        let mut operators = LinkedList::new();
-
+    fn evaluate_node_heap(&mut self) -> f64 {
+        let mut nodes = Vec::with_capacity(self.tokens.len() / 2);
+        
         nodes.push(self.base);
 
         while nodes.len() > 0 {
             let index = nodes.pop().unwrap();
-
-            match self.tokens[index] {
-                Node::Number(n) => numbers.push_back(n),
-                Node::Operator(o, l, r) => {
-                    operators.push_back(o);
-                    nodes.push(l);
-                    nodes.push(r);
-                },
+            if let Node::Operator(o, l, r) = self.tokens[index] {
+                match (self.tokens[l].clone(), self.tokens[r].clone()) {
+                    (Node::Number(n1), Node::Number(n2)) => {
+                        let res = match o {
+                            Operator::Plus => n1 + n2,
+                            Operator::Minus => n1 - n2,
+                            Operator::Mul => n1 * n2,
+                            Operator::Div => n1 / n2,
+                        };
+                        self.tokens[index] = Node::Number(res);
+                        continue;
+                    },
+                    (Node::Number(_), Node::Operator(_, _, _)) => nodes.push(r),
+                    (Node::Operator(_, _, _), Node::Number(_)) => nodes.push(l),
+                    (Node::Operator(_, _, _), Node::Operator(_, _, _)) => { nodes.push(l); nodes.push(r); },
+                }
+                nodes.insert(nodes.len() - 1, index);
             }
         }
 
-        let mut n = numbers.pop_back().unwrap();
-
-        while numbers.len() > 0 {
-            match operators.pop_front().unwrap() {
-                Operator::Plus => n += numbers.pop_front().unwrap(),
-                Operator::Minus => n -= numbers.pop_front().unwrap(),
-                Operator::Mul => n *= numbers.pop_front().unwrap(),
-                Operator::Div => n /= numbers.pop_front().unwrap(),
-            }
+        if let Node::Number(n) = self.tokens[self.base] {
+            return n;
         }
-        return n;
+        unreachable!();
     }
     pub fn print(&self) {
         println!("TREE - base: {}, last:  {}", self.base, self.last);
