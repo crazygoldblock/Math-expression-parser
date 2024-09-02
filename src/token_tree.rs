@@ -142,12 +142,12 @@ impl TokenTree {
                     self.tokens[index] = Node::Number(res);
                     nodes.pop();
                 },
-                (Node::Number(_), Node::Operator(op)) => {
-                    nodes.push((op.right, op));
+                (Node::Number(_), Node::Operator(op2)) => {
+                    nodes.push((op.right, op2));
                 }
                     
-                (Node::Operator(op), Node::Number(_)) => {
-                    nodes.push((op.left, op));
+                (Node::Operator(op1), Node::Number(_)) => {
+                    nodes.push((op.left, op1));
                 }
                 (Node::Operator(op1), Node::Operator(op2)) => { 
                     nodes.push((op.left, op1)); 
