@@ -120,8 +120,8 @@ impl TokenTree {
         
         nodes.push(self.base);
 
-        while nodes.len() > 0 {
-            let index = nodes.pop().unwrap();
+        loop {
+            let index = *nodes.last().unwrap();
             if let Node::Operator(o, l, r) = self.tokens[index] {
                 match (self.tokens[l].clone(), self.tokens[r].clone()) {
                     (Node::Number(n1), Node::Number(n2)) => {
@@ -131,21 +131,20 @@ impl TokenTree {
                             Operator::Mul => n1 * n2,
                             Operator::Div => n1 / n2,
                         };
+
+                        if nodes.len() == 0 {
+                            return res;
+                        }
+
                         self.tokens[index] = Node::Number(res);
-                        continue;
+                        nodes.pop();
                     },
-                    (Node::Number(_), Node::Operator(_, _, _)) => nodes.push(r),
-                    (Node::Operator(_, _, _), Node::Number(_)) => nodes.push(l),
-                    (Node::Operator(_, _, _), Node::Operator(_, _, _)) => { nodes.push(l); nodes.push(r); },
+                    (Node::Number(_), Node::Operator(..)) => nodes.push(r),
+                    (Node::Operator(..), Node::Number(_)) => nodes.push(l),
+                    (Node::Operator(..), Node::Operator(..)) => { nodes.push(l); nodes.push(r); },
                 }
-                nodes.insert(nodes.len() - 1, index);
             }
         }
-
-        if let Node::Number(n) = self.tokens[self.base] {
-            return n;
-        }
-        unreachable!();
     }
     pub fn print(&self) {
         println!("TREE - base: {}, last:  {}", self.base, self.last);
