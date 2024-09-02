@@ -1,5 +1,4 @@
-use std::io;
-
+use std::{fs::File, io::{self, Read}, mem::size_of, time::Instant};
 use token_parse::{parse_exp, token_to_string};
 use token_tree::evaluate_exp;
 use validation::{add_implicit_tokens, validate_tokens};
@@ -8,18 +7,32 @@ mod token_parse;
 mod validation;
 mod token_tree;
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 // -.5(1+2)(-3+4) * 5 + 3 * 2(1*2_0)
-
+// (1 + 2 * 3) * 4 (1 + 2 + 3) * 5
 fn main() {
-    loop {
+
+    let mut input = String::new();
+    File::open("input.txt").unwrap().read_to_string(&mut input).unwrap();
+
+    let ins = Instant::now();
+
+    match eval_exp(&input) {
+        Ok(result) => println!("result: {}", result),
+        Err(err) => println!("{}", err),
+    }
+
+    println!("{:?}", ins.elapsed());
+
+    /*loop {
+
         let input = get_input("Input expression...");
 
         match eval_exp(&input) {
             Ok(result) => println!("result: {}", result),
             Err(err) => println!("{}", err),
         }
-    }      
+    } */     
 }
 fn eval_exp(input: &str) -> Result<f64, String> {
 
@@ -43,9 +56,7 @@ fn eval_exp(input: &str) -> Result<f64, String> {
         println!("");
     }
 
-    if let Err(s) = validate_tokens(&tokens) {
-        return Err(s);
-    }
+    validate_tokens(&tokens)?;
 
     add_implicit_tokens(&mut tokens);
 

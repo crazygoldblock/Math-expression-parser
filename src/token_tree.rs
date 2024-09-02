@@ -60,7 +60,7 @@ impl TokenTree {
         TokenTree { tokens: Vec::new(), base: 0, last: 0 }
     }
     fn add_last(&mut self, o: Operator, n: f64) {
-        let node = Node::Operator(o, self.tokens.len(), self.tokens.len() + 1);
+        let node = Node::Operator( NodeOp { operator: o, left: self.tokens.len(), right: self.tokens.len() + 1 } );
 
         let last = replace(&mut self.tokens[self.last], node);
 
@@ -71,7 +71,8 @@ impl TokenTree {
     }
     fn add_base(&mut self, o: Operator, n: f64) {
 
-        let node = Node::Operator(o, self.base, self.tokens.len());
+        let node = Node::Operator( NodeOp { operator: o, left: self.base, right: self.tokens.len() } );
+        
 
         self.tokens.push( Node::Number(n) );
         self.tokens.push(node);
@@ -103,10 +104,10 @@ impl TokenTree {
     fn evaluate_node_stack(&self, node: &Node) -> f64 {
         match node {
             Node::Number(n) => *n,
-            Node::Operator(o, l, r) => {
-                let left = self.evaluate_node_stack(&self.tokens[*l]);
-                let right = self.evaluate_node_stack(&self.tokens[*r]);
-                match o {
+            Node::Operator(op) => {
+                let left = self.evaluate_node_stack(&self.tokens[op.left]);
+                let right = self.evaluate_node_stack(&self.tokens[op.right]);
+                match op.operator {
                     Operator::Plus => left + right,
                     Operator::Minus => left - right,
                     Operator::Mul => left * right,
@@ -118,31 +119,40 @@ impl TokenTree {
     fn evaluate_node_heap(&mut self) -> f64 {
         let mut nodes = Vec::with_capacity(self.tokens.len() / 2);
         
-        nodes.push(self.base);
+        match self.tokens[self.base].clone() {
+            Node::Number(n) => return n,
+            Node::Operator(op) => nodes.push((self.base, op)),
+        }
 
         loop {
-            let index = *nodes.last().unwrap();
-            if let Node::Operator(o, l, r) = self.tokens[index] {
-                match (self.tokens[l].clone(), self.tokens[r].clone()) {
-                    (Node::Number(n1), Node::Number(n2)) => {
-                        let res = match o {
-                            Operator::Plus => n1 + n2,
-                            Operator::Minus => n1 - n2,
-                            Operator::Mul => n1 * n2,
-                            Operator::Div => n1 / n2,
-                        };
+            let (index, op) = nodes.last().unwrap().clone();
+            match (self.tokens[op.left].clone(), self.tokens[op.right].clone()) {
+                (Node::Number(n1), Node::Number(n2)) => {
+                    let res = match op.operator {
+                        Operator::Plus => n1 + n2,
+                        Operator::Minus => n1 - n2,
+                        Operator::Mul => n1 * n2,
+                        Operator::Div => n1 / n2,
+                    };
 
-                        if nodes.len() == 0 {
-                            return res;
-                        }
+                    if nodes.len() == 0 {
+                        return res;
+                    }
 
-                        self.tokens[index] = Node::Number(res);
-                        nodes.pop();
-                    },
-                    (Node::Number(_), Node::Operator(..)) => nodes.push(r),
-                    (Node::Operator(..), Node::Number(_)) => nodes.push(l),
-                    (Node::Operator(..), Node::Operator(..)) => { nodes.push(l); nodes.push(r); },
+                    self.tokens[index] = Node::Number(res);
+                    nodes.pop();
+                },
+                (Node::Number(_), Node::Operator(op)) => {
+                    nodes.push((op.right, op));
                 }
+                    
+                (Node::Operator(op), Node::Number(_)) => {
+                    nodes.push((op.left, op));
+                }
+                (Node::Operator(op1), Node::Operator(op2)) => { 
+                    nodes.push((op.left, op1)); 
+                    nodes.push((op.right, op2)); 
+                },
             }
         }
     }
@@ -152,7 +162,7 @@ impl TokenTree {
             print!("{} ", i);
             match n {
                 Node::Number(n) => println!("N: {}", n),
-                Node::Operator(o, l, r) => println!("Op: {}, {}, {}", operator_to_string(o), l, r),
+                Node::Operator(op) => println!("Op: {}, {}, {}", operator_to_string(&op.operator), op.left, op.right),
             }
         }
     }
@@ -160,5 +170,11 @@ impl TokenTree {
 #[derive(Clone)]
 enum Node {
     Number(f64),
-    Operator(Operator, usize, usize),
+    Operator(NodeOp),
+}
+#[derive(Clone)]
+struct NodeOp {
+    operator: Operator,
+    left: usize,
+    right: usize,
 }
