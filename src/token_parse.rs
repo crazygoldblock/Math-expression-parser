@@ -41,8 +41,6 @@ fn parse_number(p: &mut Parser) -> Result<f64, String> {
         }
     }
 
-    
-
     if chars.len() == 0 {
         return  Err((p.consume() as char).to_string());
     }

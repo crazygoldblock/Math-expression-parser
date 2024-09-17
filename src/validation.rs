@@ -110,6 +110,8 @@ pub fn add_implicit_tokens(tokens: &mut Vec<Token>) {
 
     tokens.reserve(indexes.len());
 
+    
+
     for i in indexes.iter().rev() {
         tokens.insert(*i, Token::Number(0.0));
     }

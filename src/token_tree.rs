@@ -1,6 +1,6 @@
 use std::mem::replace;
 
-use crate::{token_parse::{operator_to_string, Operator, Token}, DEBUG};
+use crate::{eval_exp, token_parse::{operator_to_string, Operator, Token}, DEBUG};
 
 pub fn evaluate_exp(tokens: &[Token]) -> f64 {
 
@@ -177,4 +177,11 @@ struct NodeOp {
     operator: Operator,
     left: usize,
     right: usize,
+}
+
+#[test]
+fn basic_evaluation() {
+    assert!( eval_exp("1 +2* 3 +4").unwrap() == 11.0);
+    assert!( eval_exp("-1 *2 +3").unwrap() == 1.0);
+    assert!( eval_exp("2 / 4 / 2").unwrap() == 0.25);
 }
