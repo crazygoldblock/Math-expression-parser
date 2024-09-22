@@ -2,12 +2,12 @@ use std::mem::replace;
 
 use crate::{eval_exp, token_parse::{operator_to_string, Operator, Token}, DEBUG};
 
-pub fn evaluate_exp(tokens: &[Token]) -> f64 {
+pub fn evaluate_exp(tokens: &[Token]) -> f32 {
 
     let mut parser = Parser::new(tokens.to_vec());
     create_eval_tree_recursive(&mut parser)
 }
-fn create_eval_tree_recursive(parser: &mut Parser) -> f64 {
+fn create_eval_tree_recursive(parser: &mut Parser) -> f32 {
 
     let mut tree = TokenTree::new();
     let mut operator = Operator::Plus;
@@ -59,7 +59,7 @@ impl TokenTree {
     fn new() -> Self {
         TokenTree { tokens: Vec::new(), base: 0, last: 0 }
     }
-    fn add_last(&mut self, o: Operator, n: f64) {
+    fn add_last(&mut self, o: Operator, n: f32) {
         let node = Node::Operator( NodeOp { operator: o, left: self.tokens.len(), right: self.tokens.len() + 1 } );
 
         let last = replace(&mut self.tokens[self.last], node);
@@ -69,7 +69,7 @@ impl TokenTree {
 
         self.last = self.tokens.len() - 1;
     }
-    fn add_base(&mut self, o: Operator, n: f64) {
+    fn add_base(&mut self, o: Operator, n: f32) {
 
         let node = Node::Operator( NodeOp { operator: o, left: self.base, right: self.tokens.len() } );
         
@@ -80,7 +80,7 @@ impl TokenTree {
         self.base = self.tokens.len() - 1;
         self.last = self.tokens.len() - 2;
     }
-    fn add_next(&mut self, o: Operator, n: f64) {
+    fn add_next(&mut self, o: Operator, n: f32) {
 
         if self.tokens.len() == 0 {
             self.tokens.push(Node::Number(n));
@@ -92,7 +92,7 @@ impl TokenTree {
             Operator::Mul | Operator::Div => self.add_last(o, n),
         }
     }
-    fn evaluate_tree(&mut self) -> f64 {
+    fn evaluate_tree(&mut self) -> f32 {
 
         if self.tokens.len() < 10_000 {
             self.evaluate_node_stack(&self.tokens[self.base])
@@ -101,7 +101,7 @@ impl TokenTree {
             self.evaluate_node_heap()
         }
     }
-    fn evaluate_node_stack(&self, node: &Node) -> f64 {
+    fn evaluate_node_stack(&self, node: &Node) -> f32 {
         match node {
             Node::Number(n) => *n,
             Node::Operator(op) => {
@@ -116,7 +116,7 @@ impl TokenTree {
             },
         }
     }
-    fn evaluate_node_heap(&mut self) -> f64 {
+    fn evaluate_node_heap(&mut self) -> f32 {
         let mut nodes = Vec::with_capacity(self.tokens.len() / 2);
         
         match self.tokens[self.base].clone() {
@@ -169,7 +169,7 @@ impl TokenTree {
 }
 #[derive(Clone)]
 enum Node {
-    Number(f64),
+    Number(f32),
     Operator(NodeOp),
 }
 #[derive(Clone)]
@@ -181,7 +181,14 @@ struct NodeOp {
 
 #[test]
 fn basic_evaluation() {
-    assert!( eval_exp("1 +2* 3 +4").unwrap() == 11.0);
+    assert_eq!( eval_exp("1 +2* 3 +4").unwrap(), 11.0);
     assert!( eval_exp("-1 *2 +3").unwrap() == 1.0);
     assert!( eval_exp("2 / 4 / 2").unwrap() == 0.25);
+    assert!( eval_exp("2 + 4 * 3").unwrap() == 14.0);
+    assert!( eval_exp("3 * 4 / 10").unwrap() == 1.2);
+
+    assert_eq!(eval_exp("-.5(1+2)(-3+4) * 5 + 3 * 2(1*20)").unwrap(), 112.5);
+    assert_eq!(eval_exp("(1 + 2 * 3) * 4 (1 + 2 + 3) * 5").unwrap(), 840.0);
+
+    assert_eq!( eval_exp("(1+2)(3+4)").unwrap(), 21.0);
 }

@@ -1,6 +1,12 @@
-pub fn parse_exp(exp: &str) -> Result< Vec<Token>, String > {
-    let mut res = Vec::new();
+use core::str;
 
+pub fn parse_exp(exp: &str) -> Result< Vec<Token>, String > {
+
+    // 40.88
+    //
+    //
+
+    let mut res = Vec::with_capacity(exp.len() / 2);
     let mut parser = Parser::new(exp.to_string().into_bytes());
 
     while parser.has_next() {
@@ -20,20 +26,17 @@ pub fn parse_exp(exp: &str) -> Result< Vec<Token>, String > {
     }
     return Ok(res);
 }
-fn parse_number(p: &mut Parser) -> Result<f64, String> {
-
-    let mut chars = Vec::new();
+fn parse_number(p: &mut Parser) -> Result<f32, String> {
+    
     p.back();
+    let start = p.index;
+    let mut end = p.index;
 
     while p.has_next() {
         let c = p.consume();
 
-        if c == b' ' || c == b'_' {
-            continue;
-        }
-
         if (c as char).is_ascii_digit() || c == b'.' {
-            chars.push(c);
+            end += 1;
         }
         else {
             p.back();
@@ -41,15 +44,15 @@ fn parse_number(p: &mut Parser) -> Result<f64, String> {
         }
     }
 
-    if chars.len() == 0 {
+    if start == end {
         return  Err((p.consume() as char).to_string());
     }
-
-    let s = String::from_utf8(chars).unwrap();
+    
+    let s = str::from_utf8(&p.buffer[start..end]).unwrap().trim();
 
     match s.parse() {
         Ok(f) => Ok(f),
-        Err(_) => Err(s.clone()),
+        Err(_) => Err(s.to_string()),
     }
 }
 struct Parser {
@@ -71,9 +74,9 @@ impl Parser {
         self.index -= 1;
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Token {
-    Number(f64),
+    Number(f32),
     Operator(Operator),
     Bracket(bool),
 }

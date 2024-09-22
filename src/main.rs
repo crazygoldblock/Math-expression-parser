@@ -1,8 +1,7 @@
-use std::io;
-
+use std::{fs::{self, File}, io::{self, Write}, path::Path, ptr::null, time::Instant};
 use linear_eval::linear_eval;
-use token_parse::{parse_exp, token_to_string};
-use token_tree::evaluate_exp;
+use rand::{thread_rng, Rng};
+use token_parse::{parse_exp, token_to_string, Token};
 use validation::{add_implicit_tokens, validate_tokens};
 
 mod token_parse;
@@ -14,6 +13,10 @@ const DEBUG: bool = cfg!(debug_assertions);
 // -.5(1+2)(-3+4) * 5 + 3 * 2(1*2_0)
 // (1 + 2 * 3) * 4 (1 + 2 + 3) * 5
 fn main() {
+
+    measure();
+
+    //measure();
 
     /*println!("{}", size_of::<Result<u64, Infallible>>() );
 
@@ -29,7 +32,7 @@ fn main() {
 
     println!("{:?}", ins.elapsed());*/
 
-    println!("rr {}", eval_exp("-.5(1+2)(-3+4) * 5 + 3 * 2(1*2_0)").unwrap());
+    //println!("rr {}", eval_exp("-.5(1+2)(-3+4) * 5 + 3 * 2(1*2_0)").unwrap());
 
     loop {
         let input = get_input("Input expression...");
@@ -40,7 +43,7 @@ fn main() {
         }
     } 
 }
-fn eval_exp(input: &str) -> Result<f64, String> {
+fn eval_exp(input: &str) -> Result<f32, String> {
 
     let mut tokens = match parse_exp(input) {
         Ok(e) => e,
@@ -84,4 +87,56 @@ fn get_input(prompt: &str) -> String {
     io::stdin().read_line(&mut buf).unwrap();
 
     return buf.trim().to_string();
+}
+fn measure() {
+
+    generate_test();
+
+    let s = fs::read_to_string("./input.txt").unwrap();
+
+    let ins = Instant::now();
+
+    let r = eval_exp(&s).unwrap();
+
+    println!("{:?}", ins.elapsed());
+    println!("Result: {}", r);
+}
+fn generate_test() {
+
+    if Path::new("./input.txt").exists() {
+        return;
+    }
+
+    let mut res = String::new();
+
+    let operators = vec!['+', '-', '*', '/'];
+    let mut brackets = 0;
+
+    for _ in 0..1_000_000 {
+
+        if thread_rng().gen_range(0..8) == 0 {
+            if brackets < 30 {
+                res.push('(');
+            brackets += 1;
+            }
+        }
+
+        res.push_str(&(thread_rng().gen_range(0..10000) as f32 / 100f32).to_string());
+
+        if thread_rng().gen_range(0..8) == 0 {
+            if brackets > 0 {
+                res.push(')');
+                brackets -= 1;
+            }
+        }
+
+        res.push(operators[thread_rng().gen_range(0..4)]);
+    }
+    res.push_str(&(thread_rng().gen_range(0..10000) as f32 / 100f32).to_string());
+
+    for _ in 0..brackets {
+        res.push(')');
+    }
+
+    fs::write("./input.txt", res).unwrap();
 }
